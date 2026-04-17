@@ -1,0 +1,153 @@
+
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Correlação Interativo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 { color: #1a3a5f; margin-bottom: 5px; }
+        p.subtitle { color: #666; margin-bottom: 25px; }
+        .controls {
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        input[type=range] { width: 100%; cursor: pointer; }
+        .r-value { font-size: 24pt; font-weight: bold; color: #004a99; margin: 10px 0; }
+        .description { font-style: italic; color: #555; height: 50px; }
+        .buttons { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #004a99;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover { background-color: #003366; }
+        canvas { max-width: 100%; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Simulador de Correlação</h1>
+    <p class="subtitle">Arraste o slider para ver como os dados se comportam</p>
+
+    <div class="controls">
+        <label for="rSlider">Coeficiente de Correlação (r):</label>
+        <input type="range" id="rSlider" min="-1" max="1" step="0.01" value="0.7">
+        <div class="r-value" id="rDisplay">0.70</div>
+        <div class="description" id="descDisplay">Correlação Positiva Forte</div>
+
+        <div class="buttons">
+            <button onclick="setR(0.85)">Exemplo: Administração (Treino vs Prod.)</button>
+            <button onclick="setR(-0.9)">Exemplo: Comex (Câmbio vs Exp.)</button>
+            <button onclick="setR(0)">Correlação Nula</button>
+        </div>
+    </div>
+
+    <canvas id="correlationChart"></canvas>
+</div>
+
+<script>
+    const ctx = document.getElementById('correlationChart').getContext('2d');
+    let chart;
+
+    function generateData(r, count = 100) {
+        const data = [];
+        for (let i = 0; i < count; i++) {
+            // Box-Muller transform for normal distribution
+            let u = 0, v = 0;
+            while(u === 0) u = Math.random();
+            while(v === 0) v = Math.random();
+            let x = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+            
+            u = 0, v = 0;
+            while(u === 0) u = Math.random();
+            while(v === 0) v = Math.random();
+            let error = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+            
+            // Equation for correlated variables: Y = r*X + sqrt(1-r^2)*Error
+            let y = r * x + Math.sqrt(1 - r * r) * error;
+            
+            data.push({ x: x.toFixed(2), y: y.toFixed(2) });
+        }
+        return data;
+    }
+
+    function updateDescription(r) {
+        let text = "";
+        if (r >= 0.7) text = "Correlação Positiva Forte";
+        else if (r > 0.3) text = "Correlação Positiva Moderada";
+        else if (r >= -0.3) text = "Correlação Fraca ou Nula";
+        else if (r > -0.7) text = "Correlação Negativa Moderada";
+        else text = "Correlação Negativa Forte";
+        document.getElementById('descDisplay').innerText = text;
+    }
+
+    function initChart() {
+        const initialR = parseFloat(document.getElementById('rSlider').value);
+        chart = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Pontos de Dados',
+                    data: generateData(initialR),
+                    backgroundColor: '#004a99'
+                }]
+            },
+            options: {
+                scales: {
+                    x: { min: -4, max: 4, grid: { display: false } },
+                    y: { min: -4, max: 4, grid: { display: false } }
+                },
+                animation: { duration: 500 },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    function updateChart() {
+        const r = parseFloat(document.getElementById('rSlider').value);
+        document.getElementById('rDisplay').innerText = r.toFixed(2);
+        updateDescription(r);
+        chart.data.datasets[0].data = generateData(r);
+        chart.update();
+    }
+
+    function setR(val) {
+        document.getElementById('rSlider').value = val;
+        updateChart();
+    }
+
+    document.getElementById('rSlider').addEventListener('input', updateChart);
+
+    window.onload = initChart;
+</script>
+
+</body>
+</html>
